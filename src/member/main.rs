@@ -1,5 +1,5 @@
 mod advertise;
 
 fn main() {
-    advertise::main();
+    let _ = advertise::main();
 }

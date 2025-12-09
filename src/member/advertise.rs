@@ -1,11 +1,12 @@
 use std::{collections::{BTreeMap, BTreeSet}, fs, time::Duration};
 use bluer::adv::Advertisement;
-use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce, aead::{Aead, OsRng, rand_core::RngCore, AeadCore}};
+use aes_gcm::{Aes256Gcm, Key, KeyInit, Nonce, AeadCore};
+use aes_gcm::aead::{Aead, OsRng, rand_core::RngCore};
 use base64::{Engine, engine::general_purpose};
 use tokio::{io::{BufReader, AsyncBufReadExt}, time::sleep};
 use uuid::{uuid, Uuid};
 
-type NonceSize = AeadCore::NonceSize;
+type NonceSize = <Aes256Gcm as AeadCore>::NonceSize;
 
 #[tokio::main]
 pub(crate) async fn main() -> bluer::Result<()> {
@@ -17,12 +18,12 @@ pub(crate) async fn main() -> bluer::Result<()> {
 
     println!("Advertising on Bluetooth adapter {} with address {}", adapter.name(), adapter.address().await?);
 
-    let key: [u8; 32] = general_purpose::STANDARD
+    let key_bytes: [u8; 32] = general_purpose::STANDARD
         .decode(fs::read_to_string("group-key")?.trim())
         .expect("invalid key file")
         .try_into()
         .expect("invalid key");
-    let key = Key::from_slice(&key);
+    let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
     let cipher = Aes256Gcm::new(key);
 
     let mut nonce_bytes = [0u8; 12];
@@ -32,7 +33,8 @@ pub(crate) async fn main() -> bluer::Result<()> {
     let asset_id = fs::read_to_string("asset-tag")?.trim().to_string();
     let asset_id_hash = blake3::hash(&asset_id.as_bytes());
 
-    let ciphertext = cipher.encrypt(nonce, asset_id_hash.as_bytes()[..]).unwrap();
+    let plaintext: &[u8] = asset_id_hash.as_bytes();
+    let ciphertext = cipher.encrypt(nonce, plaintext).unwrap();
 
     let mut payload = Vec::new();
     payload.push(0xA1);
