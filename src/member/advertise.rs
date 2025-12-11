@@ -8,7 +8,7 @@ use uuid::{uuid, Uuid};
 
 type NonceSize = <Aes256Gcm as AeadCore>::NonceSize;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 pub(crate) async fn main() -> bluer::Result<()> {
     env_logger::init();
 
